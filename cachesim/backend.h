@@ -79,6 +79,7 @@ int Cache__load(Cache* self, addr_range range);
 
 void Cache__store(Cache* self, addr_range range, int non_temporal);
 
+long _Cache__get_cacheline_id(Cache* self, long long addr);
 //!might break for complicated cache structures
 void dealloc_cacheSim(Cache*);
 

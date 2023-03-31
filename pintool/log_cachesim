@@ -1,0 +1,11 @@
+Cache* get_cacheSim_from_file("tests/cachedef"):
+
+read input file
+
+link caches:
+done
+
+freeing resources:
+done
+
+returning cache...

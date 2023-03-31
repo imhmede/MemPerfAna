@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include<stdbool.h>
 
 
 static struct Node* head = NULL;
@@ -110,6 +111,10 @@ static PyMemberDef Cache_members[] = {
 #endif
 
 inline static long Cache__get_cacheline_id(Cache* self, long long addr) {
+	return addr >> self->cl_bits;
+}
+
+long _Cache__get_cacheline_id(Cache* self, long long addr) {
 	return addr >> self->cl_bits;
 }
 
@@ -334,7 +339,9 @@ static int Cache__inject(Cache* self, cache_entry* entry) {
 			if(location != -1) {
 				// HIT: Found it!
 				self->HIT.count++;
+				//long _cl_id = _Cache__get_cacheline_id(self, range.addr);
 				searchNode(cl_id, 1);
+				//printf("\t%ld\n", cl_id);
 				/*struct Node* foundNode = searchNode(cl_id);
 				  if (foundNode == NULL) {
 				// Adding nodes
@@ -394,6 +401,7 @@ static int Cache__inject(Cache* self, cache_entry* entry) {
 
 				// MISS!
 				self->MISS.count++;
+				//long _cl_id = _Cache__get_cacheline_id(self, range.addr);
 				searchNode(cl_id, 0);
 				/*struct Node* foundNode = searchNode(cl_id);
 				  if (foundNode == NULL) {
@@ -1464,6 +1472,7 @@ static int Cache__inject(Cache* self, cache_entry* entry) {
 
 		void searchNode(long targetcl_id, int flag) {
 			struct Node* current = head;
+			bool found = false;
 			while (current != NULL) {
 				if (current->cl_id == targetcl_id) {
 					if(flag == 1)
@@ -1473,14 +1482,21 @@ static int Cache__inject(Cache* self, cache_entry* entry) {
 					{
 						current->miss ++;
 					}
+					found = true;
 				}
+				if(found == true)
+					break;
 				current = current->next;
 			}
-			addNode(targetcl_id);
-			if(flag == 1)
-				head->hit++;
-			else
-				head->miss++;
+			if(found == false)
+			{
+				addNode(targetcl_id);
+				if(flag == 1)
+					head->hit++;
+				else
+					head->miss++;
+
+			}
 		}
 
 		/*struct Node* searchNode(long targetcl_id) {

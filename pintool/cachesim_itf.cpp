@@ -10,6 +10,7 @@ using std::string;
 using std::vector;
 using std::pair;
 using std::make_pair;
+using std::map;
 
 extern "C"
 {
@@ -18,10 +19,14 @@ extern "C"
 
 //cache object for the load and store calls of the instrumentation functions
 Cache* firstLevel;
-Cache* lmsfirstLevel;
+Cache* lmssdfirstLevel;
+Cache* lmsfrfirstLevel;
 std::ofstream outFile;
-vector< pair <long, int> > vectMiss;
-vector< pair <long, int> > vectFreq;
+vector< pair <long, int> > buffer;
+map<long, int> mapMiss;
+map<long, int> mapFreq;
+vector<long> vectMiss;
+//vector< pair <long, int> > vectFreq;
 
 //pin way of adding commandline parameters
 //bool, if function calls are in the instrumented region or not
@@ -162,19 +167,82 @@ VOID MemRead(UINT64 addr, UINT32 size)
 	Cache__load(firstLevel, {static_cast<long int>(addr), size});
 	outFile << "R " << addr << " " << size << std::endl;
 }
+
 VOID MemWrite(UINT64 addr, UINT32 size)
 {
 	Cache__store(firstLevel, {static_cast<long int>(addr), size},0);
 	outFile << "W " << addr << " " << size << std::endl;
 }
 
-VOID _MemRead(UINT64 addr, UINT32 size)
+VOID sdMemRead(UINT64 addr, UINT32 size)
 {
-	Cache__load(lmsfirstLevel, {static_cast<long int>(addr), size});
+	//std::cout << _Cache__get_cacheline_id(lmssdfirstLevel, addr) << std::endl;
+	long cl_id = _Cache__get_cacheline_id(lmssdfirstLevel, addr);
+	std::map<long,int>::iterator it;
+	it = mapMiss.find(cl_id);
+	if (it != mapMiss.end())
+	{
+		it->second += size;
+		//std::cout << "Element Found: " << cl_id << "=" << it->first
+		//	<< std::endl; 
+
+	}else
+	{
+		Cache__load(lmssdfirstLevel, {static_cast<long int>(addr), size});
+
+	}
+	/*std::vector<long>::iterator it = std::find(
+	  vectMiss.begin(), vectMiss.end(), cl_id);
+	  if (it != vectMiss.end())
+	  std::cout << "Element Found" << std::endl; 
+	  else     
+	  std::cout << "Element Not Found" << std::endl;
+	  std::cout << "\t" << cl_id << std::endl;*/
 }
-VOID _MemWrite(UINT64 addr, UINT32 size)
+
+VOID sdMemWrite(UINT64 addr, UINT32 size)
 {
-	Cache__store(lmsfirstLevel, {static_cast<long int>(addr), size},0);
+	long cl_id = _Cache__get_cacheline_id(lmssdfirstLevel, addr);
+	std::map<long,int>::iterator it;
+	it = mapMiss.find(cl_id);
+	if (it != mapMiss.end())
+	{
+		it->second += size;
+	}else
+	{
+		Cache__store(lmssdfirstLevel, {static_cast<long int>(addr), size},0);
+
+	}
+}
+
+VOID frMemRead(UINT64 addr, UINT32 size)
+{
+	long cl_id = _Cache__get_cacheline_id(lmsfrfirstLevel, addr);
+	std::map<long,int>::iterator it;
+	it = mapFreq.find(cl_id);
+	if (it != mapFreq.end())
+	{
+		it->second += size;
+	}else
+	{
+		Cache__load(lmsfrfirstLevel, {static_cast<long int>(addr), size});
+
+	}
+}
+
+VOID frMemWrite(UINT64 addr, UINT32 size)
+{
+	long cl_id = _Cache__get_cacheline_id(lmsfrfirstLevel, addr);
+	std::map<long,int>::iterator it;
+	it = mapFreq.find(cl_id);
+	if (it != mapFreq.end())
+	{
+		it->second += size;
+	}else
+	{
+		Cache__store(lmsfrfirstLevel, {static_cast<long int>(addr), size},0);
+
+	}
 }
 // instrumentation routine inserting the callbacks to memory instructions
 VOID Instruction(INS ins, VOID *v)
@@ -250,25 +318,8 @@ VOID printStats(Cache* cache)
 VOID Fini(int code, VOID * v)
 {
 	std::ifstream infile;
-	UINT64 addr;
-	UINT32 size;
-	char op = ' ';
-	printStats(firstLevel);
-	outFile.close();
-	infile.open(KnobOutputFile.Value().c_str());
-	while(infile >> op >> addr >> size)
-	{
-		if(op == 'R')
-		{
-			_MemRead(addr, size);
-		}else
-		{
-			_MemWrite(addr, size);
-		}
-	}
-	infile.close();
-	printStats(lmsfirstLevel);
-	//  printStats(lmsfirstLevel);
+
+	/** read cache line misses */
 
 	long cl_id;
 	int miss;
@@ -280,39 +331,89 @@ VOID Fini(int code, VOID * v)
 	infile.open("miss.out");
 	while(infile >> cl_id >> miss)
 	{
-		vectMiss.push_back( make_pair(cl_id, miss) );
+		buffer.push_back( make_pair(cl_id, miss) );
 		n++;
 	}
 	infile.close();
-	sort(vectMiss.begin(), vectMiss.end(), sortbysec);
-
-	// Printing the sorted vector(after using sort())
-	std::cout << "Report by Misses \n";
-	for (int i=0; i < n; i++)
+	sort(buffer.begin(), buffer.end(), sortbysec); //sort based on second pair value
+	for (int i = n; i > n / 4; i--)
 	{
-		// "first" and "second" are used to access
-		// 1st and 2nd element of pair respectively
-		std::cout << vectMiss[i].first << " "
-			<< vectMiss[i].second << std::endl;
+		mapMiss[buffer[i].first] = 0;//buffer[i].second;
 	}
+	buffer.clear();
+
+	/** read cache line access frequency */
+
 	printfreq();
 	infile.open("freq.out");
 	n = 0;
 	while(infile >> cl_id >> freq)
 	{
-		vectFreq.push_back( make_pair(cl_id, freq) );
+		buffer.push_back( make_pair(cl_id, freq) );
 		n++;
 	}
 	infile.close();
-	sort(vectFreq.begin(), vectFreq.end(), sortbysec);
-	std::cout << "Report by Frequency\n";
-	for (int i=0; i < n; i++)
+	sort(buffer.begin(), buffer.end(), sortbysec); //sort based on second pair value
+	for (int i = n; i > n / 4; i--)
 	{
-		// "first" and "second" are used to access
-		// 1st and 2nd element of pair respectively
-		std::cout << vectFreq[i].first << " "
-			<< vectFreq[i].second << std::endl;
+		mapFreq[buffer[i].first] = 0;
 	}
+	buffer.clear();
+
+	/** read a trace of memory accesses to simulate LMS Cache */
+
+	UINT64 addr;
+	UINT32 size;
+	char op = ' ';
+	outFile.close();
+	infile.open(KnobOutputFile.Value().c_str());
+	while(infile >> op >> addr >> size)
+	{
+		if(op == 'R')
+		{
+			sdMemRead(addr, size);
+			frMemRead(addr, size);
+		}else
+		{
+			sdMemWrite(addr, size);
+			frMemWrite(addr, size);
+		}
+	}
+	infile.close();
+	//std::cout << "n : " << n << ", n/4 : " << n/4 << std::endl;
+	printStats(firstLevel);
+	printStats(lmssdfirstLevel);
+	map<long, int>::iterator it;
+	int lmsDataSize = 0;
+	for(it = mapMiss.begin(); it != mapMiss.end(); ++it)
+		lmsDataSize += it->second;
+	std::cout << "lms: " << lmsDataSize << std::endl;
+	printStats(lmsfrfirstLevel);
+	lmsDataSize = 0;
+	for(it = mapFreq.begin(); it != mapFreq.end(); ++it)
+		lmsDataSize += it->second;
+	std::cout << "lms: " << lmsDataSize << std::endl;
+	//  printStats(lmssdfirstLevel);
+
+
+	// Printing the sorted vector(after using sort())
+	/*std::cout << "Report by Misses \n";
+	  for (int i=0; i < n; i++)
+	  {
+	// "first" and "second" are used to access
+	// 1st and 2nd element of pair respectively
+	std::cout << vectMiss[i].first << " "
+	<< vectMiss[i].second << std::endl;
+	}*/
+	//printfreq();
+	/*std::cout << "Report by Frequency\n";
+	  for (int i=0; i < n; i++)
+	  {
+	// "first" and "second" are used to access
+	// 1st and 2nd element of pair respectively
+	std::cout << vectFreq[i].first << " "
+	<< vectFreq[i].second << std::endl;
+	}*/
 	// not needed? and could break for more complicated cache configurations
 	// dealloc_cacheSim(firstLevel);
 }
@@ -330,7 +431,8 @@ int main(int argc, char *argv[])
 
 	//get cachesim exits with failure on errors. in that case, the log file has to be checked
 	firstLevel = get_cacheSim_from_file(KnobCacheFile.Value().c_str());
-	lmsfirstLevel = get_cacheSim_from_file(KnobCacheFile.Value().c_str());
+	lmssdfirstLevel = get_cacheSim_from_file(KnobCacheFile.Value().c_str());
+	lmsfrfirstLevel = get_cacheSim_from_file(KnobCacheFile.Value().c_str());
 
 	if (KnobFollowCalls.Value())
 	{
