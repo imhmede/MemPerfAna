@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 
 // Array of bits as found in comp.lang.c FAQ Question 20.8: http://c-faq.com/misc/bitsets.html
 #define BITMASK(b) (1 << ((b) % CHAR_BIT))
@@ -6,6 +8,7 @@
 #define BITCLEAR(a, b) ((a)[BITSLOT(b)] &= ~BITMASK(b))
 #define BITTEST(a, b) ((a)[BITSLOT(b)] & BITMASK(b))
 #define BITNSLOTS(nb) ((nb + CHAR_BIT - 1) / CHAR_BIT)
+
 
 typedef struct cache_entry {
     long cl_id;
@@ -82,6 +85,24 @@ void dealloc_cacheSim(Cache*);
 Cache* get_cacheSim_from_file(const char* file);
 // Cache* get_cacheSim_from_file(char** lines, int size);
 
+struct Node {
+	long cl_id;
+	long hit;
+	long miss;
+	struct Node* next;
+};
+
+
+void addNode(long newcl_id);
+
+//struct Node* searchNode(long targetcl_id);
+void searchNode(long targetcl_id, int flag);
+
+void printmiss();
+void printfreq();
+
+
 #ifndef USE_PIN
 void printStats(Cache* cache);
 #endif
+
