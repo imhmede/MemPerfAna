@@ -1,27 +1,27 @@
 Cache only architecture
 L1
-LOAD: 28511 size: 194818 B
-STORE: 11539 size: 91108 B
-HIT: 26003 size: 143238 B
-MISS: 2519 size: 51724 B
-EVICT: 705 size: 45120 B
+LOAD: 30866 size: 197879 B
+STORE: 11583 size: 91464 B
+HIT: 28349 size: 146360 B
+MISS: 2526 size: 51639 B
+EVICT: 709 size: 45376 B
 
 Hybrid LMStore-Cache architecture with Stack Distance-Based Allocation algorithm
 L1
-LOAD: 3148 size: 14416 B
-STORE: 219 size: 2721 B
-HIT: 2693 size: 9692 B
-MISS: 455 size: 4724 B
-EVICT: 22 size: 1408 B
+LOAD: 3183 size: 14606 B
+STORE: 212 size: 2665 B
+HIT: 2724 size: 9914 B
+MISS: 459 size: 4692 B
+EVICT: 24 size: 1536 B
 
-lms: 230453
+lms: 233672
 
 Hybrid LMStore-Cache architecture with Frequency-Based Allocation algorithm
 L1
-LOAD: 465 size: 22369 B
+LOAD: 472 size: 22401 B
 STORE: 1920 size: 16952 B
-HIT: 10 size: 48 B
-MISS: 455 size: 22321 B
-EVICT: 292 size: 18688 B
+HIT: 12 size: 54 B
+MISS: 460 size: 22347 B
+EVICT: 291 size: 18624 B
 
-lms: 227085
+lms: 230470
