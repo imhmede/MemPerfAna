@@ -381,13 +381,19 @@ VOID Fini(int code, VOID * v)
 	}
 	infile.close();
 	//std::cout << "n : " << n << ", n/4 : " << n/4 << std::endl;
+	std::cout << "Cache only architecture\n";
 	printStats(firstLevel);
+	
+	std::cout << "Hybrid LMStore-Cache architecture with Stack Distance-Based Allocation algorithm\n";
 	printStats(lmssdfirstLevel);
 	map<long, int>::iterator it;
 	int lmsDataSize = 0;
 	for(it = mapMiss.begin(); it != mapMiss.end(); ++it)
 		lmsDataSize += it->second;
 	std::cout << "lms: " << lmsDataSize << std::endl;
+	std::cout << "\n";
+
+	std::cout << "Hybrid LMStore-Cache architecture with Frequency-Based Allocation algorithm\n";
 	printStats(lmsfrfirstLevel);
 	lmsDataSize = 0;
 	for(it = mapFreq.begin(); it != mapFreq.end(); ++it)
